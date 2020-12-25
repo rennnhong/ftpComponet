@@ -1,23 +1,30 @@
 package org.example.ftp;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import com.google.common.collect.Iterables;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
-import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
-import org.apache.log4j.Logger;
+import org.example.ftp.response.DownloadStatus;
+import org.example.ftp.response.UploadStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 
-public class FTPClientTemplate implements FTPClientOperations {
-    private static final Logger logger = Logger.getLogger(FTPClientTemplate.class);
+public class FTPClientTemplate {
+    private static final Logger logger = LoggerFactory.getLogger(FTPClientTemplate.class);
+//    private static final Logger logger = Logger.getLogger(FTPClientTemplate.class);
 
     private static String DEAFULT_REMOTE_CHARSET = "UTF-8";
     private static int DEAFULT_REMOTE_PORT = 21;
@@ -36,45 +43,42 @@ public class FTPClientTemplate implements FTPClientOperations {
     }
 
     /**
-     * 查看服务器上文件列表方法
+     * 查看服務器上文件列表方法
      *
      * @param remotedir
      * @return
      * @throws IOException
      */
-    public FTPFile[] list(final String remotedir) throws IOException {
-        return execute(new FTPClientCallback<FTPFile[]>() {
-            public FTPFile[] doTransfer(FTPClient ftp) throws IOException {
-                ftp.changeWorkingDirectory(remotedir);
-                FTPFile[] files = ftp.listFiles(remotedir);
-                return files;
-            }
+    public List<String> list(final String remotedir) throws IOException {
+        return execute(ftpOperations -> {
+            ftpOperations.move(remotedir);
+            return ftpOperations.list();
         });
     }
 
     /**
-     * 文件上传的方法
+     * 文件上傳的方法
      *
-     * @param remote
-     * @param local
+     * @param localFilePath
+     * @param remoteDirPath
      * @return
      * @throws IOException
      */
-    public UploadStatus upload(final String local, final String remote) throws IOException {
-        return execute(new FTPClientCallback<UploadStatus>() {
-            public UploadStatus doTransfer(FTPClient ftpClient) throws IOException {
-                return FtpHelper.getInstance().upload(ftpClient, local, remote);
-            }
+    public UploadStatus upload(final String localFilePath, final String remoteDirPath) throws IOException {
+        return execute(ftpOperations -> {
+            ftpOperations.move(remoteDirPath);
+            Path localPath = Paths.get(localFilePath);
+            Path localDirPath = localPath.getParent();
+            return ftpOperations.upload(localPath.getFileName().toString(), localDirPath.toString());
         });
     }
 
     /**
-     * 上传文件到服务器,新上传和断点续传
+     * 上傳文件到服務器,新上傳和斷點續傳
      *
-     * @param remoteFile  远程文件名，在上传之前已经将服务器工作目录做了改变
-     * @param localFile   本地文件File句柄，绝对路径
-     * @param processStep 需要显示的处理进度步进值
-     * @param ftpClient   FTPClient引用
+     * @param remoteFile 遠程文件名，在上傳之前已經將服務器工作目錄做了改變
+     * @param localFile  本地文件File句柄，絕對路徑
+     * @param ftpClient  FTPClient引用
      * @return
      * @throws IOException
      */
@@ -85,65 +89,69 @@ public class FTPClientTemplate implements FTPClientOperations {
 
 
     /**
-     * 从远程服务器目录下载文件到本地服务器目录中
+     * 從遠程服務器目錄下載文件到本地服務器目錄中
      *
-     * @param localdir              FTP服务器保存目录
-     * @param remotedir             FTP下载服务器目录
-     * @param localTempFile临时下载记录文件
-     * @return 成功下载记录
+     * @param localdir     FTP服務器保存目錄
+     * @param remotedir    FTP下載服務器目錄
+     * @param localTmpFile 臨時下載記錄文件
+     * @return 成功下載記錄
      */
     public Collection<String> downloadList(final String localdir, final String remotedir, final String localTmpFile) throws IOException {
-        return execute(new FTPClientCallback<Collection<String>>() {
-            public Collection<String> doTransfer(final FTPClient ftp) throws IOException {
-                //切换到下载目录的中
-                ftp.changeWorkingDirectory(remotedir);
-                //获取目录中所有的文件信息
-                FTPFile[] ftpfiles = ftp.listFiles();
-                Collection<String> fileNamesCol = new ArrayList<String>();
-                //判断文件目录是否为空
-                if (!ArrayUtils.isEmpty(ftpfiles)) {
-                    for (FTPFile ftpfile : ftpfiles) {
-                        String remoteFilePath = remotedir + separator + ftpfile.getName();
-                        String localFilePath = localdir + separator + ftpfile.getName();
-                        System.out.println("remoteFilePath =" + remoteFilePath + " localFilePath=" + localFilePath);
-                        //单个文件下载状态
+        return execute(ftpOperations -> {
+            //切換到下載目錄的中
+            ftpOperations.move(remotedir);
+            //獲取目錄中所有的文件信息
+//                FTPFile[] ftpfiles = ftpOperations.list();
+
+            String[] fileNames = Iterables.toArray(ftpOperations.list(), String.class);
+            Collection<String> fileNamesCol = new ArrayList<String>();
+            //判斷文件目錄是否為空
+            if (!ArrayUtils.isEmpty(fileNames)) {
+                for (String fileName : fileNames) {
+//                        String remoteFilePath = remotedir + separator + fileName;
+//                        String localFilePath = localdir + separator + fileName;
+//                        System.out.println("remoteFilePath =" + remoteFilePath + " localFilePath=" + localFilePath);
+                    //單個文件下載狀態
 //                        DownloadStatus downStatus=downloadFile(remoteFilePath, localFilePath);
-                        DownloadStatus result = FtpHelper.getInstance().download(ftp, remoteFilePath, localFilePath);
-                        if (result == DownloadStatus.Download_New_Success) {
-                            //临时目录中添加记录信息
-                            fileNamesCol.add(remoteFilePath);
-                        }
+                    DownloadStatus result = ftpOperations.download(fileName, localdir);
+//                        DownloadStatus result = FtpHelper.getInstance().download(ftp, remoteFilePath, localFilePath);
+                    if (result == DownloadStatus.Download_New_Success) {
+                        //臨時目錄中添加記錄信息
+                        String remoteFilePath = remotedir + separator + fileName;
+                        fileNamesCol.add(remoteFilePath);
                     }
                 }
+            }
 //                if(CollectionUtils.isNotEmpty(fileNamesCol)){
 //                    FileOperateUtils.writeLinesToFile(fileNamesCol, localTmpFile);
 //                }
-                return fileNamesCol;
-            }
+            return fileNamesCol;
         });
     }
 
     /**
-     * 从FTP服务器上下载文件,支持断点续传，上传百分比汇报
+     * 從FTP服務器上下載文件至指定資料夾,支持斷點續傳，上傳百分比匯報
      *
-     * @param remote 远程文件路径
-     * @param local  本地文件路径
-     * @return 上传的状态
+     * @param remoteFile 遠程文件路徑
+     * @param localDir   本地文件資料夾路徑
+     * @return 上傳的狀態
      * @throws IOException
      */
-    public DownloadStatus downloadFile(final String remote, final String local) throws IOException {
-        return execute(new FTPClientCallback<DownloadStatus>() {
-            public DownloadStatus doTransfer(FTPClient ftpClient) throws IOException {
-                DownloadStatus result = FtpHelper.getInstance().download(ftpClient, remote, local);
-                return result;
-            }
+    public DownloadStatus download(final String remoteFile, final String localDir) throws IOException {
+        return execute(ftpOperations -> {
+            Path remotePath = Paths.get(remoteFile);
+            Path remoteDir = remotePath.getParent();
+            String remoteFileName = remotePath.getFileName().toString();
+
+            ftpOperations.move(remoteDir.toString());
+            return ftpOperations.download(remoteFileName, localDir);
         });
     }
 
     /**
-     * 执行FTP回调操作的方法
+     * 執行FTP回調操作的方法
      *
-     * @param callback 回调的函数
+     * @param callback 回調的函數
      * @throws IOException
      */
     public <T> T execute(FTPClientCallback<T> callback) throws IOException {
@@ -154,51 +162,51 @@ public class FTPClientTemplate implements FTPClientOperations {
                  ftp.configure(getFtpClientConfig());
                  ftpClientConfig.setServerTimeZoneId(TimeZone.getDefault().getID());
             }*/
-            //登录FTP服务器
+            //登錄FTP服務器
             try {
-                //设置超时时间
+                //設置超時時間
                 ftp.setDataTimeout(7200);
-                //设置默认编码
+                //設置默認編碼
                 ftp.setControlEncoding(DEAFULT_REMOTE_CHARSET);
-                //设置默认端口
+                //設置默認端口
                 ftp.setDefaultPort(DEAFULT_REMOTE_PORT);
-                //设置被动模式
+                //設置被動模式
                 ftp.enterLocalPassiveMode();
-                //设置是否显示隐藏文件
+                //設置是否顯示隱藏文件
                 ftp.setListHiddenFiles(false);
-                //连接ftp服务器
+                //連接ftp服務器
                 if (StringUtils.isNotEmpty(port) && NumberUtils.isDigits(port)) {
                     ftp.connect(host, Integer.valueOf(port));
                 } else {
                     ftp.connect(host);
                 }
             } catch (ConnectException e) {
-                logger.error("连接FTP服务器失败：" + ftp.getReplyString() + ftp.getReplyCode());
+                logger.error("連接FTP服務器失敗：" + ftp.getReplyString() + ftp.getReplyCode());
                 throw new IOException("Problem connecting the FTP-server fail", e);
             }
-            //得到连接的返回编码
+            //得到連接的返回編碼
             int reply = ftp.getReplyCode();
 
             if (!FTPReply.isPositiveCompletion(reply)) {
                 ftp.disconnect();
             }
-            //登录失败权限验证失败
+            //登錄失敗權限驗證失敗
             if (!ftp.login(getUsername(), getPassword())) {
                 ftp.quit();
                 ftp.disconnect();
-                logger.error("连接FTP服务器用户或者密码失败：：" + ftp.getReplyString());
+                logger.error("連接FTP服務器用戶或者密碼失敗：：" + ftp.getReplyString());
                 throw new IOException("Cant Authentificate to FTP-Server");
             }
             if (logger.isDebugEnabled()) {
-                logger.info("成功登录FTP服务器：" + host + " 端口：" + port);
+                logger.info("成功登錄FTP服務器：" + host + " 端口：" + port);
             }
             ftp.setFileType(FTPClient.BINARY_FILE_TYPE);
-            //回调FTP的操作
-            return callback.doTransfer(ftp);
+            //回調FTP的操作
+            return callback.doTransfer(new FTPClientOperationsAdapter(ftp));
         } finally {
             //FTP退出
             ftp.logout();
-            //断开FTP连接
+            //斷開FTP連接
             if (ftp.isConnected()) {
                 ftp.disconnect();
             }
@@ -211,19 +219,19 @@ public class FTPClientTemplate implements FTPClientOperations {
     }
 
     /**
-     * 获取FTP的配置操作系统
+     * 獲取FTP的配置操作系統
      *
      * @return
      */
     public FTPClientConfig getFtpClientConfig() {
-        //获得系统属性集
+        //獲得系統屬性集
         Properties props = System.getProperties();
-        //操作系统名称
+        //操作系統名稱
         String osname = props.getProperty("os.name");
-        //针对window系统
+        //針對window系統
         if (osname.equalsIgnoreCase("Windows XP")) {
             ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_NT);
-            //针对linux系统
+            //針對linux系統
         } else if (osname.equalsIgnoreCase("Linux")) {
             ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_UNIX);
         }

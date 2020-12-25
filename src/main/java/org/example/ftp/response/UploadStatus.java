@@ -1,15 +1,15 @@
-package org.example.ftp;
+package org.example.ftp.response;
 
 public enum UploadStatus {
-    Create_Directory_Fail(0,"远程服务器相应目录创建失败"), // 远程服务器相应目录创建失败
-    Create_Directory_Success(1,"远程服务器闯将目录成功"), // 远程服务器闯将目录成功
-    Upload_New_File_Success(2,"上传新文件成功"), // 上传新文件成功
-    Upload_New_File_Failed(3,"上传新文件失败"), // 上传新文件失败
-    File_Exits(4,"文件已经存在"), // 文件已经存在
-    Remote_Bigger_Local(5,"远程文件大于本地文件"), // 远程文件大于本地文件
-    Upload_From_Break_Success(6," 断点续传成功"), // 断点续传成功
-    Upload_From_Break_Failed(7,"断点续传失败"), // 断点续传失败
-    Delete_Remote_Faild(8,"删除远程文件失败"); // 删除远程文件失败
+    Create_Directory_Fail(0,"遠程服務器相應目錄創建失敗"), // 遠程服務器相應目錄創建失敗
+    Create_Directory_Success(1,"遠程服務器闖將目錄成功"), // 遠程服務器闖將目錄成功
+    Upload_New_File_Success(2,"上傳新文件成功"), // 上傳新文件成功
+    Upload_New_File_Failed(3,"上傳新文件失敗"), // 上傳新文件失敗
+    File_Exits(4,"文件已經存在"), // 文件已經存在
+    Remote_Bigger_Local(5,"遠程文件大於本地文件"), // 遠程文件大於本地文件
+    Upload_From_Break_Success(6," 斷點續傳成功"), // 斷點續傳成功
+    Upload_From_Break_Failed(7,"斷點續傳失敗"), // 斷點續傳失敗
+    Delete_Remote_Faild(8,"刪除遠程文件失敗"); // 刪除遠程文件失敗
 
     private int code;
 
@@ -38,7 +38,7 @@ public enum UploadStatus {
     }
 
 //    /**
-//     * 下载状态中中使用的code
+//     * 下載狀態中中使用的code
 //     * @param code
 //     * @return
 //     */
