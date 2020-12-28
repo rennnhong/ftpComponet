@@ -1,4 +1,4 @@
-package org.example.ftp;
+package org.example.ftp.helper;
 
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
 
+/**
+ * apache FtpClient 的封裝工具類
+ */
 public class FtpHelper {
     private static String DEAFULT_REMOTE_CHARSET = "UTF-8";
     private static String DEAFULT_LOCAL_CHARSET = "UTF-8";
@@ -311,7 +314,7 @@ public class FtpHelper {
     }
 
 
-    protected void makeRemoteDir(FTPClient ftp, String dir)
+    public void makeRemoteDir(FTPClient ftp, String dir)
             throws IOException {
         if (dir.indexOf("/") == 0) {
             ftp.changeWorkingDirectory("/");

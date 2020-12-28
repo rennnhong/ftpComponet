@@ -7,6 +7,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPReply;
+import org.example.ftp.helper.FtpHelper;
 import org.example.ftp.response.DownloadStatus;
 import org.example.ftp.response.UploadStatus;
 import org.slf4j.Logger;
@@ -17,53 +18,53 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
-public class FTPClientTemplate {
-    private static final Logger logger = LoggerFactory.getLogger(FTPClientTemplate.class);
-//    private static final Logger logger = Logger.getLogger(FTPClientTemplate.class);
 
+/**
+ * todo 將配置屬性抽離到FtpConfigMap
+ */
+public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable {
+    private static final Logger logger = LoggerFactory.getLogger(FtpClientTemplate.class);
     private static String DEAFULT_REMOTE_CHARSET = "UTF-8";
     private static int DEAFULT_REMOTE_PORT = 21;
     private static String separator = File.separator;
-    private FTPClientConfig ftpClientConfig;
-    private String host;
-    private String username;
-    private String password;
-    private String port;
+//    private FTPClientConfig ftpClientConfig;
 
-    public FTPClientTemplate(String host, String user, String pwd, String port) {
+    private final String host;
+    private final String username;
+    private final String password;
+    private final String port;
+
+    // todo 配置改成從此map這邊取得
+    private Map<FtpConfig, Object> configs;
+
+
+    /**
+     * 傳入基本連線資訊，其餘配置照預設
+     *
+     * @param host  遠端主機
+     * @param user  帳號
+     * @param pwd   密碼
+     * @param port  閘道
+     */
+    public FtpClientTemplate(String host, String user, String pwd, String port) {
         this.host = host;
         this.username = user;
         this.password = pwd;
         this.port = port;
     }
 
-    /**
-     * 查看服務器上文件列表方法
-     *
-     * @param remotedir
-     * @return
-     * @throws IOException
-     */
-    public List<String> list(final String remotedir) throws IOException {
+    @Override
+    public List<String> list(final String remoteDir) throws IOException {
         return execute(ftpOperations -> {
-            ftpOperations.move(remotedir);
+            ftpOperations.move(remoteDir);
             return ftpOperations.list();
         });
     }
 
-    /**
-     * 文件上傳的方法
-     *
-     * @param localFilePath
-     * @param remoteDirPath
-     * @return
-     * @throws IOException
-     */
+
+    @Override
     public UploadStatus upload(final String localFilePath, final String remoteDirPath) throws IOException {
         return execute(ftpOperations -> {
             ftpOperations.move(remoteDirPath);
@@ -73,33 +74,31 @@ public class FTPClientTemplate {
         });
     }
 
-    /**
-     * 上傳文件到服務器,新上傳和斷點續傳
-     *
-     * @param remoteFile 遠程文件名，在上傳之前已經將服務器工作目錄做了改變
-     * @param localFile  本地文件File句柄，絕對路徑
-     * @param ftpClient  FTPClient引用
-     * @return
-     * @throws IOException
-     */
-    public UploadStatus uploadFile(String remoteFile, File localFile,
-                                   FTPClient ftpClient, long remoteSize) throws IOException {
-        return FtpHelper.getInstance().uploadFile(remoteFile, localFile, ftpClient, remoteSize);
+    @Override
+    public UploadStatus upload(File localFile, String remoteDirPath) throws IOException {
+        /* todo 待實作 */
+        return null;
     }
 
+//    /**
+//     * 上傳文件到服務器,新上傳和斷點續傳
+//     *
+//     * @param remoteFile 遠程文件名，在上傳之前已經將服務器工作目錄做了改變
+//     * @param localFile  本地文件File句柄，絕對路徑
+//     * @param ftpClient  FTPClient引用
+//     * @return
+//     * @throws IOException
+//     */
+//    public UploadStatus uploadFile(String remoteFile, File localFile,
+//                                   FTPClient ftpClient, long remoteSize) throws IOException {
+//        return FtpHelper.getInstance().uploadFile(remoteFile, localFile, ftpClient, remoteSize);
+//    }
 
-    /**
-     * 從遠程服務器目錄下載文件到本地服務器目錄中
-     *
-     * @param localdir     FTP服務器保存目錄
-     * @param remotedir    FTP下載服務器目錄
-     * @param localTmpFile 臨時下載記錄文件
-     * @return 成功下載記錄
-     */
-    public Collection<String> downloadList(final String localdir, final String remotedir, final String localTmpFile) throws IOException {
+    @Override
+    public Collection<String> downloadList(final String localDir, final String remoteDir, final String localTmpFile) throws IOException {
         return execute(ftpOperations -> {
             //切換到下載目錄的中
-            ftpOperations.move(remotedir);
+            ftpOperations.move(remoteDir);
             //獲取目錄中所有的文件信息
 //                FTPFile[] ftpfiles = ftpOperations.list();
 
@@ -113,11 +112,11 @@ public class FTPClientTemplate {
 //                        System.out.println("remoteFilePath =" + remoteFilePath + " localFilePath=" + localFilePath);
                     //單個文件下載狀態
 //                        DownloadStatus downStatus=downloadFile(remoteFilePath, localFilePath);
-                    DownloadStatus result = ftpOperations.download(fileName, localdir);
+                    DownloadStatus result = ftpOperations.download(fileName, localDir);
 //                        DownloadStatus result = FtpHelper.getInstance().download(ftp, remoteFilePath, localFilePath);
                     if (result == DownloadStatus.Download_New_Success) {
                         //臨時目錄中添加記錄信息
-                        String remoteFilePath = remotedir + separator + fileName;
+                        String remoteFilePath = remoteDir + separator + fileName;
                         fileNamesCol.add(remoteFilePath);
                     }
                 }
@@ -129,23 +128,28 @@ public class FTPClientTemplate {
         });
     }
 
-    /**
-     * 從FTP服務器上下載文件至指定資料夾,支持斷點續傳，上傳百分比匯報
-     *
-     * @param remoteFile 遠程文件路徑
-     * @param localDir   本地文件資料夾路徑
-     * @return 上傳的狀態
-     * @throws IOException
-     */
-    public DownloadStatus download(final String remoteFile, final String localDir) throws IOException {
+    @Override
+    public Collection<String> uploadList(String remoteDir, String localDir, String localTmpFile) throws Exception {
+        /* todo 待實作 */
+        return null;
+    }
+
+    @Override
+    public DownloadStatus download(final String remoteFile, final String localDirPath) throws IOException {
         return execute(ftpOperations -> {
             Path remotePath = Paths.get(remoteFile);
             Path remoteDir = remotePath.getParent();
             String remoteFileName = remotePath.getFileName().toString();
 
             ftpOperations.move(remoteDir.toString());
-            return ftpOperations.download(remoteFileName, localDir);
+            return ftpOperations.download(remoteFileName, localDirPath);
         });
+    }
+
+    @Override
+    public DownloadStatus download(String remoteFilePath, File localDir) throws IOException {
+        /* todo 待實作 */
+        return null;
     }
 
     /**
@@ -154,7 +158,8 @@ public class FTPClientTemplate {
      * @param callback 回調的函數
      * @throws IOException
      */
-    public <T> T execute(FTPClientCallback<T> callback) throws IOException {
+    @Override
+    public <T> T execute(FtpClientCallback<T> callback) throws IOException {
         FTPClient ftp = new FTPClient();
         try {
 
@@ -191,7 +196,7 @@ public class FTPClientTemplate {
                 ftp.disconnect();
             }
             //登錄失敗權限驗證失敗
-            if (!ftp.login(getUsername(), getPassword())) {
+            if (!ftp.login(this.username, this.password)) {
                 ftp.quit();
                 ftp.disconnect();
                 logger.error("連接FTP服務器用戶或者密碼失敗：：" + ftp.getReplyString());
@@ -202,7 +207,7 @@ public class FTPClientTemplate {
             }
             ftp.setFileType(FTPClient.BINARY_FILE_TYPE);
             //回調FTP的操作
-            return callback.doTransfer(new FTPClientOperationsAdapter(ftp));
+            return callback.doTransfer(new FtpOperationsAdapter(ftp));
         } finally {
             //FTP退出
             ftp.logout();
@@ -218,53 +223,53 @@ public class FTPClientTemplate {
         //return file.replace(System.getProperty("file.separator").charAt(0), this.remoteFileSep.charAt(0));
     }
 
-    /**
-     * 獲取FTP的配置操作系統
-     *
-     * @return
-     */
-    public FTPClientConfig getFtpClientConfig() {
-        //獲得系統屬性集
-        Properties props = System.getProperties();
-        //操作系統名稱
-        String osname = props.getProperty("os.name");
-        //針對window系統
-        if (osname.equalsIgnoreCase("Windows XP")) {
-            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_NT);
-            //針對linux系統
-        } else if (osname.equalsIgnoreCase("Linux")) {
-            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_UNIX);
-        }
-        if (logger.isDebugEnabled()) {
-            logger.info("the ftp client system os Name " + osname);
-        }
-        return ftpClientConfig;
-    }
+//    /**
+//     * 獲取FTP的配置操作系統
+//     *
+//     * @return
+//     */
+//    public FTPClientConfig getFtpClientConfig() {
+//        //獲得系統屬性集
+//        Properties props = System.getProperties();
+//        //操作系統名稱
+//        String osname = props.getProperty("os.name");
+//        //針對window系統
+//        if (osname.equalsIgnoreCase("Windows XP")) {
+//            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_NT);
+//            //針對linux系統
+//        } else if (osname.equalsIgnoreCase("Linux")) {
+//            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_UNIX);
+//        }
+//        if (logger.isDebugEnabled()) {
+//            logger.info("the ftp client system os Name " + osname);
+//        }
+//        return ftpClientConfig;
+//    }
 
 
-    public String getHost() {
-        return host;
-    }
-
-    public void setHost(String host) {
-        this.host = host;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
+//    public String getHost() {
+//        return host;
+//    }
+//
+//    public void setHost(String host) {
+//        this.host = host;
+//    }
+//
+//    public String getPassword() {
+//        return password;
+//    }
+//
+//    public void setPassword(String password) {
+//        this.password = password;
+//    }
+//
+//    public String getUsername() {
+//        return username;
+//    }
+//
+//    public void setUsername(String username) {
+//        this.username = username;
+//    }
 
 
 }

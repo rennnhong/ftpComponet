@@ -16,7 +16,7 @@ import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.List;
 
-public class FTPClientTemplateTest {
+public class FtpClientTemplateTest {
 
     private String ftpLocalDir = "D://ftp_test/local";
     private String remoteRoot = "/";
@@ -47,7 +47,7 @@ public class FTPClientTemplateTest {
 
     @Test
     public void testUploadSingleFile() throws IOException {
-        FTPClientTemplate ftp = new FTPClientTemplate(host, username, pwd, port);
+        FtpClientTemplate ftp = new FtpClientTemplate(host, username, pwd, port);
         UploadStatus upload = ftp.upload(
                 Paths.get(ftpLocalDir).resolve("upload1.txt").toString(),
                 "/upload");
@@ -61,7 +61,7 @@ public class FTPClientTemplateTest {
 
     @Test
     public void testDownloadSingleFile() throws IOException {
-        FTPClientTemplate ftp = new FTPClientTemplate(host, username, pwd, port);
+        FtpClientTemplate ftp = new FtpClientTemplate(host, username, pwd, port);
         DownloadStatus download = ftp.download(
                 Paths.get("download").resolve("download1.txt").toString(),
                 Paths.get(ftpLocalDir).toString());
@@ -75,7 +75,7 @@ public class FTPClientTemplateTest {
 
     @Test
     public void testListFiles() throws IOException {
-        FTPClientTemplate ftp = new FTPClientTemplate(host, username, pwd, port);
+        FtpClientTemplate ftp = new FtpClientTemplate(host, username, pwd, port);
         List<String> list = ftp.list(Paths.get("/list").toString());
         list.forEach(s -> System.out.println(s));
     }
@@ -92,10 +92,10 @@ public class FTPClientTemplateTest {
 
     @Test
     public void testCustomAction() throws IOException {
-        FTPClientTemplate ftp = new FTPClientTemplate(host, username, pwd, port);
-        ftp.execute(new FTPClientCallback<String>() {
+        FtpClientTemplate ftp = new FtpClientTemplate(host, username, pwd, port);
+        ftp.execute(new FtpClientCallback<String>() {
             @Override
-            public String doTransfer(FTPClientOperations ftp) throws IOException {
+            public String doTransfer(FtpOperations ftp) throws IOException {
 
                 System.out.println("task1");
                 ftp.move("action1");

@@ -6,7 +6,7 @@ import org.example.ftp.response.UploadStatus;
 import java.io.IOException;
 import java.util.List;
 
-public interface FTPClientOperations {
+public interface FtpOperations {
     DownloadStatus download(String fileName, String localDir) throws IOException;
 
     UploadStatus upload(String fileName, String localDir) throws IOException;
