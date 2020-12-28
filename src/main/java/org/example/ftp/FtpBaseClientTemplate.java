@@ -37,7 +37,7 @@ public interface FtpBaseClientTemplate {
      * @return 上傳的狀態
      * @throws IOException
      */
-    DownloadStatus download(final String remoteFile, final String localDirPath) throws IOException;
+    DownloadStatus download(final String remoteFilePath, final String localDirPath) throws IOException;
     /**
      * 從FTP服務器上下載文件至指定資料夾,支持斷點續傳，上傳百分比匯報
      *
