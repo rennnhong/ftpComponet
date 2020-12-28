@@ -20,39 +20,32 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-
-/**
- * todo 將配置屬性抽離到FtpConfigMap
- */
 public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable {
     private static final Logger logger = LoggerFactory.getLogger(FtpClientTemplate.class);
-    private static String DEAFULT_REMOTE_CHARSET = "UTF-8";
-    private static int DEAFULT_REMOTE_PORT = 21;
+
+    private static String DEFAULT_REMOTE_CHARSET = "UTF-8";
+    private static int DEFAULT_REMOTE_PORT = 21;
+    private static int DEFAULT_TIMEOUT = 7200;
+
     private static String separator = File.separator;
-//    private FTPClientConfig ftpClientConfig;
 
     private final String host;
     private final String username;
     private final String password;
-    private final String port;
+    private final int port;
 
-    // todo 配置改成從此map這邊取得
-    private Map<FtpConfig, Object> configs;
+    private String controlEncoding;
+    private int timeout;
+    private boolean passiveMode;
 
-
-    /**
-     * 傳入基本連線資訊，其餘配置照預設
-     *
-     * @param host  遠端主機
-     * @param user  帳號
-     * @param pwd   密碼
-     * @param port  閘道
-     */
-    public FtpClientTemplate(String host, String user, String pwd, String port) {
-        this.host = host;
-        this.username = user;
-        this.password = pwd;
-        this.port = port;
+    private FtpClientTemplate(Builder builder) {
+        host = builder.host;
+        username = builder.username;
+        password = builder.password;
+        port = builder.port;
+        controlEncoding = builder.controlEncoding;
+        timeout = builder.timeout;
+        passiveMode = builder.passiveMode;
     }
 
     @Override
@@ -162,7 +155,6 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
     public <T> T execute(FtpClientCallback<T> callback) throws IOException {
         FTPClient ftp = new FTPClient();
         try {
-
             /*if(getFtpClientConfig()!=null){
                  ftp.configure(getFtpClientConfig());
                  ftpClientConfig.setServerTimeZoneId(TimeZone.getDefault().getID());
@@ -170,21 +162,19 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
             //登錄FTP服務器
             try {
                 //設置超時時間
-                ftp.setDataTimeout(7200);
+                ftp.setDataTimeout(timeout);
                 //設置默認編碼
-                ftp.setControlEncoding(DEAFULT_REMOTE_CHARSET);
+                ftp.setControlEncoding(controlEncoding);
                 //設置默認端口
-                ftp.setDefaultPort(DEAFULT_REMOTE_PORT);
+                ftp.setDefaultPort(port);
                 //設置被動模式
-                ftp.enterLocalPassiveMode();
+                if (passiveMode) ftp.enterLocalPassiveMode();
                 //設置是否顯示隱藏文件
                 ftp.setListHiddenFiles(false);
                 //連接ftp服務器
-                if (StringUtils.isNotEmpty(port) && NumberUtils.isDigits(port)) {
-                    ftp.connect(host, Integer.valueOf(port));
-                } else {
-                    ftp.connect(host);
-                }
+
+                ftp.connect(host, port);
+
             } catch (ConnectException e) {
                 logger.error("連接FTP服務器失敗：" + ftp.getReplyString() + ftp.getReplyCode());
                 throw new IOException("Problem connecting the FTP-server fail", e);
@@ -223,53 +213,49 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
         //return file.replace(System.getProperty("file.separator").charAt(0), this.remoteFileSep.charAt(0));
     }
 
-//    /**
-//     * 獲取FTP的配置操作系統
-//     *
-//     * @return
-//     */
-//    public FTPClientConfig getFtpClientConfig() {
-//        //獲得系統屬性集
-//        Properties props = System.getProperties();
-//        //操作系統名稱
-//        String osname = props.getProperty("os.name");
-//        //針對window系統
-//        if (osname.equalsIgnoreCase("Windows XP")) {
-//            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_NT);
-//            //針對linux系統
-//        } else if (osname.equalsIgnoreCase("Linux")) {
-//            ftpClientConfig = new FTPClientConfig(FTPClientConfig.SYST_UNIX);
-//        }
-//        if (logger.isDebugEnabled()) {
-//            logger.info("the ftp client system os Name " + osname);
-//        }
-//        return ftpClientConfig;
-//    }
+    public static class Builder {
+        private int port = DEFAULT_REMOTE_PORT;
+        private String controlEncoding = DEFAULT_REMOTE_CHARSET;
+        private int timeout = DEFAULT_TIMEOUT;
+        private boolean passiveMode = false;
 
 
-//    public String getHost() {
-//        return host;
-//    }
-//
-//    public void setHost(String host) {
-//        this.host = host;
-//    }
-//
-//    public String getPassword() {
-//        return password;
-//    }
-//
-//    public void setPassword(String password) {
-//        this.password = password;
-//    }
-//
-//    public String getUsername() {
-//        return username;
-//    }
-//
-//    public void setUsername(String username) {
-//        this.username = username;
-//    }
+        private final String host;
+        private final String username;
+        private final String password;
+//        private final String port;
+
+        public Builder(String host, String username, String password) {
+            this.host = host;
+            this.username = username;
+            this.password = password;
+        }
+
+        public Builder setPort(int port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder setControlEncoding(String controlEncoding) {
+            this.controlEncoding = controlEncoding;
+            return this;
+        }
+
+        public Builder setTimeout(int timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder setPassiveMode(boolean passiveMode) {
+            this.passiveMode = passiveMode;
+            return this;
+        }
+
+        public FtpSimpleClientTemplate build() {
+            return new FtpClientTemplate(this);
+        }
+
+    }
 
 
 }
