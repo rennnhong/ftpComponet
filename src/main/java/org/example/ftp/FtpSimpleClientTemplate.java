@@ -2,7 +2,7 @@ package org.example.ftp;
 
 import java.util.Collection;
 
-public interface FtpSimpleClientTemplate extends FtpBaseClientTemplate {
+public interface FtpSimpleClientTemplate extends FtpBaseClientTemplate,FtpExecutable {
     /**
      * 從遠程伺服器目錄下載多個文件到本地服務器目錄中
      *

@@ -22,7 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable {
+public class FtpClientTemplate implements FtpSimpleClientTemplate {
     private static final Logger logger = LoggerFactory.getLogger(FtpClientTemplate.class);
 
     private static String DEFAULT_REMOTE_CHARSET = "UTF-8";
@@ -71,8 +71,7 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
 
     @Override
     public UploadStatus upload(File localFile, String remoteDirPath) throws IOException {
-    	/* todo 待實作 */
-    	return execute(ftpOperations -> {
+        return execute(ftpOperations -> {
             ftpOperations.move(remoteDirPath);
             String localFilePath = localFile.getAbsolutePath();
             Path localPath = Paths.get(localFilePath);
@@ -130,29 +129,28 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
     }
 
     @Override
-    public Collection<String> uploadList(final String remoteDir,final String localDir,final String localTmpFile) throws Exception {
-        /* todo 待實作 */
-    	return execute(ftpOperations -> {
+    public Collection<String> uploadList(final String remoteDir, final String localDir, final String localTmpFile) throws Exception {
+        return execute(ftpOperations -> {
             //切換到下載目錄的中
             ftpOperations.move(remoteDir);
-            
+
             //列出上傳資料夾內所有檔案
             File localDirFile = new File(localDir);
             File[] fileNames = localDirFile.listFiles();
-            
+
             Collection<String> fileNamesCol = new ArrayList<String>();
-            
+
             //判斷上傳資料夾是否為空
-            if(!ArrayUtils.isEmpty(fileNames)) {
-            	for(File f : fileNames) {
-            		String fileName = f.getName();
-            		UploadStatus result = ftpOperations.upload(fileName, localDir);
-            		if (result == UploadStatus.Upload_New_File_Success) {
+            if (!ArrayUtils.isEmpty(fileNames)) {
+                for (File f : fileNames) {
+                    String fileName = f.getName();
+                    UploadStatus result = ftpOperations.upload(fileName, localDir);
+                    if (result == UploadStatus.Upload_New_File_Success) {
                         //臨時目錄中添加記錄信息
                         String localFilePath = fileName;
                         fileNamesCol.add(localFilePath);
                     }
-            	}
+                }
             }
 
             return fileNamesCol;
@@ -173,13 +171,12 @@ public class FtpClientTemplate implements FtpSimpleClientTemplate, FtpExecutable
 
     @Override
     public DownloadStatus download(final String remoteFilePath, File localDir) throws IOException {
-        /* todo 待實作 */
-    	return execute(ftpOperations -> {    		
+        return execute(ftpOperations -> {
             Path remotePath = Paths.get(remoteFilePath);
             Path remoteDir = remotePath.getParent();
             String remoteFileName = remotePath.getFileName().toString();
             String localDirPath = localDir.getAbsolutePath();
-            
+
             ftpOperations.move(remoteDir.toString());
             return ftpOperations.download(remoteFileName, localDirPath);
         });
